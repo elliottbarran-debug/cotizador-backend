@@ -3,8 +3,8 @@ import { pool } from './config/db.js';
 
 const PORT = process.env.PORT || 3000;
 
-// 🚀 Levantar servidor
-app.listen(PORT, () => {
+// 🚀 Levantar servidor (IMPORTANTE para Railway)
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
 
