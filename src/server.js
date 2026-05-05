@@ -1,7 +1,16 @@
 import app from './app.js';
 import { pool } from './config/db.js';
+import cors from 'cors';
 
-const PORT = 3000;
+app.use(cors({
+  origin: '*'
+}));
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Servidor corriendo");
+});
 
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
