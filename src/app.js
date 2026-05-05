@@ -6,35 +6,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ?? RUTA RAÍZ
+// ? RUTA PRINCIPAL (OBLIGATORIA)
 app.get('/', (req, res) => {
-  res.send('OK');
+  res.send('API funcionando ??');
 });
 
-// ?? TEST
+// ? TEST
 app.get('/test', (req, res) => {
   res.send('TEST OK');
 });
 
-// ?? API SIMPLE (SIN DB, SIN PDF)
+// ? API
 app.post('/api/cotizaciones', (req, res) => {
-  try {
-    const { items } = req.body;
+  const { items } = req.body;
 
-    let subtotal = 0;
+  let subtotal = 0;
 
-    items.forEach(item => {
-      subtotal += item.cantidad * item.precio;
-    });
+  items.forEach(item => {
+    subtotal += item.cantidad * item.precio;
+  });
 
-    const iva = subtotal * 0.16;
-    const total = subtotal + iva;
+  const iva = subtotal * 0.16;
+  const total = subtotal + iva;
 
-    res.json({ ok: true, total });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json({ total });
 });
 
 export default app;
