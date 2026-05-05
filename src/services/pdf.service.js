@@ -1,51 +1,45 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 import path from 'path';
 import fs from 'fs';
 
 const logoPath = path.resolve('src/assets/logo.png');
 
 export const generarPDF = async (data) => {
+  try {
+    // 🔥 usar chromium del sistema (Railway)
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process'
+      ],
+      executablePath: '/usr/bin/chromium-browser',
+      headless: true
+    });
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox']
-  });
+    const page = await browser.newPage();
 
-  const page = await browser.newPage();
+    // logo base64
+    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
 
-  // ✅ LOGO BASE64
-  const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+    // folio real 5 dígitos
+    const folio = Math.floor(10000 + Math.random() * 90000);
 
-  // ✅ FOLIO REAL (VIENE DEL CONTROLLER)
-  const folioFormateado = data.folio
-    ? `COT-${String(data.folio).padStart(5, '0')}`
-    : 'COT-00000';
-
-  const html = `
+    const html = `
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-
 <style>
-  body {
-    font-family: Arial;
-    padding: 40px;
-    font-size: 12px;
-  }
+  body { font-family: Arial; padding: 40px; font-size: 12px; }
 
   table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-    page-break-inside: auto;
-  }
-
-  thead {
-    display: table-header-group;
-  }
-
-  tr {
-    page-break-inside: avoid;
   }
 
   th, td {
@@ -53,18 +47,17 @@ export const generarPDF = async (data) => {
     padding: 6px;
   }
 
-  td:nth-child(1),
-  td:nth-child(3),
-  td:nth-child(4) {
-    text-align: right;
-  }
-
-  /* ✅ COLOR AMARILLO QUE SÍ IMPRIME */
   th {
     background-color: #facc15;
     color: #000;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  td:nth-child(1),
+  td:nth-child(3),
+  td:nth-child(4) {
+    text-align: right;
   }
 
   .header {
@@ -74,9 +67,7 @@ export const generarPDF = async (data) => {
     padding-bottom: 10px;
   }
 
-  .empresa {
-    text-align: right;
-  }
+  .empresa { text-align: right; }
 
   .titulo {
     text-align: center;
@@ -90,10 +81,6 @@ export const generarPDF = async (data) => {
     padding: 10px;
   }
 
-  .texto {
-    margin-top: 10px;
-  }
-
   .totales {
     width: 300px;
     margin-left: auto;
@@ -105,19 +92,8 @@ export const generarPDF = async (data) => {
   .totales p {
     display: flex;
     justify-content: space-between;
-    margin: 2px 0;
   }
 
-  .total-final {
-    font-size: 14px;
-  }
-
-  .footer {
-    margin-top: 20px;
-    font-size: 11px;
-  }
-
-  /* ✅ FIRMA FIJA ABAJO */
   .firma {
     position: fixed;
     bottom: 40px;
@@ -130,39 +106,25 @@ export const generarPDF = async (data) => {
     margin: 0 auto;
     border-top: 1px solid #000;
   }
-
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
-  <div class="logo">
-    <img src="data:image/png;base64,${logoBase64}" width="120"/>
-  </div>
+  <img src="data:image/png;base64,${logoBase64}" width="120"/>
 
   <div class="empresa">
     <strong>Tu Empresa S.A. de C.V.</strong><br>
-    Dirección de la empresa<br>
-    Mexicali, B.C.<br>
-    Tel: 686-000-0000<br><br>
+    Mexicali, B.C.<br><br>
 
-    Fecha: ${new Date().toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })}<br>
-    Cotización #: ${folioFormateado}
+    Fecha: ${new Date().toLocaleDateString('es-MX')}<br>
+    Cotización #: ${folio}
   </div>
 </div>
 
-<!-- TITULO -->
-<div class="titulo">
-  <strong>COTIZACIÓN</strong>
-</div>
+<div class="titulo"><strong>COTIZACIÓN</strong></div>
 
-<!-- CLIENTE -->
 <div class="cliente">
   <strong>Cliente:</strong> ${data.cliente || ''}<br>
   Teléfono: ${data.telefono || ''}<br>
@@ -170,61 +132,40 @@ export const generarPDF = async (data) => {
   Ciudad: ${data.ciudad || ''}
 </div>
 
-<!-- TEXTO -->
-<div class="texto">
-  En seguida tengo el gusto de presentar a su amable consideración el presupuesto solicitado:
-</div>
-
-<!-- TABLA -->
 <table>
-  <thead>
-    <tr>
-      <th>Cantidad</th>
-      <th>Descripción</th>
-      <th>Precio Unitario</th>
-      <th>Importe</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${data.items.map(item => {
-      const totalItem = item.cantidad * item.precio;
-      return `
-        <tr>
-          <td>${item.cantidad}</td>
-          <td>${item.descripcion}</td>
-          <td>${item.precio.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</td>
-          <td>${totalItem.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</td>
-        </tr>
-      `;
-    }).join('')}
-  </tbody>
+<thead>
+<tr>
+  <th>Cantidad</th>
+  <th>Descripción</th>
+  <th>Precio Unitario</th>
+  <th>Importe</th>
+</tr>
+</thead>
+
+<tbody>
+${data.items.map(item => {
+  const totalItem = item.cantidad * item.precio;
+  return `
+  <tr>
+    <td>${item.cantidad}</td>
+    <td>${item.descripcion}</td>
+    <td>${item.precio.toFixed(2)}</td>
+    <td>${totalItem.toFixed(2)}</td>
+  </tr>`;
+}).join('')}
+</tbody>
 </table>
 
-<!-- TOTALES -->
 <div class="totales">
-  <p><span>Subtotal:</span> <span>${(data.subtotal || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span></p>
-  <p><span>IVA:</span> <span>${(data.iva || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</span></p>
-  <p class="total-final">
-    <strong>Total:</strong>
-    <strong>${(data.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</strong>
-  </p>
+  <p><span>Subtotal:</span> <span>${(data.subtotal || 0).toFixed(2)}</span></p>
+  <p><span>IVA:</span> <span>${(data.iva || 0).toFixed(2)}</span></p>
+  <p><strong>Total:</strong> <strong>${(data.total || 0).toFixed(2)}</strong></p>
 </div>
 
-<!-- TERMINOS -->
-<div class="footer">
-  <p>PRECIOS SUJETOS A CAMBIO SIN PREVIO AVISO.</p>
-  <p>VIGENCIA DE LA COTIZACIÓN: 7 DÍAS.</p>
-  <p>TIEMPO DE ENTREGA: 5-7 DÍAS HÁBILES.</p>
-</div>
-
-<!-- FIRMA -->
 <div class="firma">
   <p>Atentamente:</p>
-
   <br><br>
-
   <div class="linea-firma"></div>
-
   <p><strong>${data.representante || ''}</strong></p>
   <p>Departamento de Ventas</p>
 </div>
@@ -233,14 +174,19 @@ export const generarPDF = async (data) => {
 </html>
 `;
 
-  await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true
-  });
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true
+    });
 
-  await browser.close();
+    await browser.close();
 
-  return pdf;
+    return pdf;
+
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    throw error;
+  }
 };
