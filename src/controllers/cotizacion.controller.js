@@ -11,17 +11,12 @@ export const crearCotizacion = async (req, res) => {
     const iva = subtotal * 0.16;
     const total = subtotal + iva;
 
-    // ?? RESPUESTA TEMPORAL SIN PDF
     res.json({
       ok: true,
-      cliente,
-      subtotal,
-      iva,
       total
     });
 
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: error.message });
   }
 };
